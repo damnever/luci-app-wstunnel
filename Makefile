@@ -2,8 +2,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wstunnel
 PKG_VERSION:=11.0.0
-PKG_RELEASE:=1
-PKG_LICENSE:=BSD-3-Clause
+PKG_RELEASE:=2
+PKG_LICENSE:=BSD-3-Clause GPL-3.0-only
+PKG_LICENSE_FILES:=LICENSE COPYING
 PKG_BUILD_DEPENDS:=luci-base/host
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 WSTUNNEL_CPU:=$(firstword $(subst +, ,$(call qstrip,$(CONFIG_CPU_TYPE))))
@@ -34,7 +35,7 @@ define Package/wstunnel
 	SUBMENU:=VPN
 	TITLE:=WebSocket and HTTP2 tunnel client
 	URL:=https://github.com/erebe/wstunnel
-	DEPENDS:=@(aarch64||x86_64||arm) +ca-bundle
+	DEPENDS:=@(aarch64||x86_64||arm) +ca-bundle +lua
 endef
 
 define Package/luci-app-wstunnel
@@ -43,13 +44,17 @@ define Package/luci-app-wstunnel
 	SUBMENU:=3. Applications
 	TITLE:=LuCI support for wstunnel clients
 	PKGARCH:=all
+	LICENSE:=GPL-3.0-only
 	DEPENDS:=+luci-compat +wstunnel
+	# The runtime package owns the shared validator required by this LuCI build.
+	EXTRA_DEPENDS:=wstunnel (= $(PKG_VERSION)-$(PKG_RELEASE))
 endef
 
 define Build/Prepare
 	[ -n "$(WSTUNNEL_ARCH)" ] || { echo "Unsupported wstunnel CPU: $(ARCH) $(WSTUNNEL_CPU)"; exit 1; }
 	mkdir -p $(PKG_BUILD_DIR)
 	$(TAR) -C $(PKG_BUILD_DIR) -xzf $(DL_DIR)/$(PKG_SOURCE)
+	$(CP) ./LICENSE $(PKG_BUILD_DIR)/COPYING
 endef
 
 define Build/Configure
@@ -67,12 +72,18 @@ define Package/wstunnel/install
 	$(INSTALL_DIR) $(1)/usr/bin $(1)/etc/config $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/usr/share/licenses/wstunnel
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/LICENSE $(1)/usr/share/licenses/wstunnel/LICENSE
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/COPYING $(1)/usr/share/licenses/wstunnel/COPYING
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wstunnel $(1)/usr/bin/wstunnel
 	$(INSTALL_CONF) ./files/root/etc/config/wstunnel $(1)/etc/config/wstunnel
 	$(INSTALL_BIN) ./files/root/etc/init.d/wstunnel $(1)/etc/init.d/wstunnel
+	$(INSTALL_DIR) $(1)/usr/lib/lua/wstunnel $(1)/usr/libexec
+	$(INSTALL_DATA) ./files/root/usr/lib/lua/wstunnel/tunnel.lua $(1)/usr/lib/lua/wstunnel/tunnel.lua
+	$(INSTALL_BIN) ./files/root/usr/libexec/wstunnel-validate $(1)/usr/libexec/wstunnel-validate
 endef
 
 define Package/luci-app-wstunnel/install
+	$(INSTALL_DIR) $(1)/usr/share/licenses/luci-app-wstunnel
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/COPYING $(1)/usr/share/licenses/luci-app-wstunnel/LICENSE
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller $(1)/usr/lib/lua/luci/model/cbi
 	$(INSTALL_DATA) ./files/luci/controller/wstunnel.lua $(1)/usr/lib/lua/luci/controller/wstunnel.lua
 	$(INSTALL_DATA) ./files/luci/model/cbi/wstunnel.lua $(1)/usr/lib/lua/luci/model/cbi/wstunnel.lua

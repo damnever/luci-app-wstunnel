@@ -1,3 +1,4 @@
+package.path = "files/root/usr/lib/lua/?.lua;" .. package.path
 local options = {}
 function translate(value)
     return value
@@ -81,9 +82,13 @@ for _, uri in ipairs({
 end
 assert(options.local_forward:validate("stdio://localhost:80") == nil)
 assert(options.local_forward:validate("tcp://") == nil)
+assert(options.local_forward:validate("tcp://127.0.0.1:65536:localhost:80") == nil)
 local tunnels = { "tcp://127.0.0.1:1234:localhost:80", "udp://1234:localhost:53" }
 assert(options.local_forward:validate(tunnels) == tunnels)
 assert(options.local_forward:validate({ "tcp://1234:localhost:80", "invalid" }) == nil)
+options.local_forward.input = { tunnels[1], "tcp://127.0.0.1:65536:localhost:80" }
+assert(options.enabled:validate("1", "main") == nil)
+options.local_forward.input = nil
 assert(options.enabled:validate("0", "main") == "0")
 assert(options.enabled:validate("1", "main") == nil)
 options.local_forward.input = tunnels

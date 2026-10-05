@@ -8,6 +8,19 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+INSTALL_VALIDATOR = """
+mkdir -p /var/lock
+if ! command -v lua >/dev/null 2>&1; then
+    opkg update >/tmp/lua-install.log 2>&1 && opkg install lua >>/tmp/lua-install.log 2>&1 || {
+        cat /tmp/lua-install.log >&2
+        exit 1
+    }
+fi
+mkdir -p /usr/lib/lua/wstunnel /usr/libexec
+cp /project/files/root/usr/lib/lua/wstunnel/tunnel.lua /usr/lib/lua/wstunnel/
+cp /project/files/root/usr/libexec/wstunnel-validate /usr/libexec/
+chmod +x /usr/libexec/wstunnel-validate
+"""
 
 
 @unittest.skipUnless(
@@ -27,7 +40,10 @@ class OpenWrtTest(unittest.TestCase):
                 os.environ["WSTUNNEL_OPENWRT_BINARY"],
                 pathlib.Path(directory) / "wstunnel",
             )
-            script = """set -e
+            script = (
+                "set -e\n"
+                + INSTALL_VALIDATOR
+                + """
 mkdir -p /var/lock /var/run/ubus
 cp /fixture/wstunnel /usr/bin/wstunnel
 cp /project/files/root/etc/init.d/wstunnel /etc/init.d/wstunnel
@@ -60,6 +76,8 @@ test -L /etc/rc.d/S95wstunnel
 wait_service ''
 uci set wstunnel.main.enabled=1
 uci set wstunnel.main.server=ws://127.0.0.1:19090
+uci delete wstunnel.main.local_forward
+uci add_list wstunnel.main.local_forward='tcp://127.0.0.1:51820:xn--bcher-kva.example:80'
 uci commit wstunnel
 ubus call service event '{"type":"config.change","data":{"package":"wstunnel"}}'
 wait_service true
@@ -74,6 +92,21 @@ while [ "$remaining" -gt 0 ]; do
 done
 [ "$remaining" -gt 0 ]
 wait_service true
+uci delete wstunnel.main.local_forward
+uci add_list wstunnel.main.local_forward='tcp://127.0.0.1:65536:localhost:80'
+uci commit wstunnel
+ubus call service event '{"type":"config.change","data":{"package":"wstunnel"}}'
+wait_service ''
+uci delete wstunnel.main.local_forward
+uci add_list wstunnel.main.local_forward='tcp://127.0.0.1:51820:bad%20host:80'
+uci commit wstunnel
+ubus call service event '{"type":"config.change","data":{"package":"wstunnel"}}'
+wait_service ''
+uci delete wstunnel.main.local_forward
+uci add_list wstunnel.main.local_forward='tcp://127.0.0.1:51820:xn--bcher-kva.example:80'
+uci commit wstunnel
+ubus call service event '{"type":"config.change","data":{"package":"wstunnel"}}'
+wait_service true
 uci set wstunnel.main.enabled=0
 uci commit wstunnel
 ubus call service event '{"type":"config.change","data":{"package":"wstunnel"}}'
@@ -81,6 +114,7 @@ wait_service ''
 /etc/init.d/wstunnel stop
 echo lifecycle-passed
 """
+            )
             result = subprocess.run(
                 [
                     "docker",
@@ -127,9 +161,19 @@ config client 'second'
 config client 'invalid'
     option enabled '1'
     option server 'wss://example.org'
+config client 'invalid_port'
+    option enabled '1'
+    option server 'wss://example.org'
+    list local_forward 'tcp://127.0.0.1:65536:localhost:80'
+config client 'invalid_address'
+    option enabled '1'
+    option server 'wss://example.org'
+    list local_forward 'tcp://[gggg::1]:8080:localhost:80'
 """
             )
-            script = """mkdir -p /var/lock
+            script = (
+                INSTALL_VALIDATOR
+                + """mkdir -p /var/lock
 cp /fixture/wstunnel /etc/config/wstunnel
 chmod 600 /etc/config/wstunnel
 initscript=/project/files/root/etc/init.d/wstunnel
@@ -141,6 +185,7 @@ start_service
 json_set_namespace procd
 json_dump
 """
+            )
             result = subprocess.run(
                 [
                     "docker",

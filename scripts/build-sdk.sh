@@ -10,6 +10,7 @@ fi
 package_dir=package/luci-app-wstunnel
 mkdir -p "$package_dir"
 cp "$source_dir/Makefile" "$package_dir/"
+cp "$source_dir/LICENSE" "$package_dir/"
 cp -R "$source_dir/files" "$package_dir/"
 feeds_config=feeds.conf.default
 [ ! -f feeds.conf ] || feeds_config=feeds.conf

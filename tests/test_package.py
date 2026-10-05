@@ -32,13 +32,16 @@ class PackageTest(unittest.TestCase):
         binary = bytearray(32)
         binary[:4] = b"\x7fELF"
         binary[18:20] = machine.to_bytes(2, "little")
-        control = f"Package: wstunnel\nVersion: 11.0.0-1\nArchitecture: {architecture}\nDepends: ca-bundle\n".encode()
+        control = f"Package: wstunnel\nVersion: 11.0.0-2\nArchitecture: {architecture}\nDepends: ca-bundle, lua\n".encode()
         payload = tar_bytes(
             [
                 ("usr/bin/wstunnel", bytes(binary), 0o755),
                 ("etc/init.d/wstunnel", b"#!/bin/sh\n", 0o755),
                 ("etc/config/wstunnel", b"config client 'main'\n", mode),
                 ("usr/share/licenses/wstunnel/LICENSE", b"License\n", 0o644),
+                ("usr/share/licenses/wstunnel/COPYING", b"GPL-3.0\n", 0o644),
+                ("usr/lib/lua/wstunnel/tunnel.lua", b"return {}\n", 0o644),
+                ("usr/libexec/wstunnel-validate", b"#!/usr/bin/lua\n", 0o755),
             ]
         )
         metadata = tar_bytes(
@@ -47,7 +50,7 @@ class PackageTest(unittest.TestCase):
                 ("conffiles", b"/etc/config/wstunnel\n", 0o644),
             ]
         )
-        package = pathlib.Path(directory) / f"wstunnel_11.0.0-1_{architecture}.ipk"
+        package = pathlib.Path(directory) / f"wstunnel_11.0.0-2_{architecture}.ipk"
         package.write_bytes(
             tar_bytes(
                 [
@@ -58,6 +61,51 @@ class PackageTest(unittest.TestCase):
             )
         )
         return package
+
+    def luci_fixture(self, directory, dependency="wstunnel (= 11.0.0-2)"):
+        control = (
+            "Package: luci-app-wstunnel\nVersion: 11.0.0-2\nArchitecture: all\n"
+            f"Depends: libc, luci-compat, {dependency}, wstunnel\n"
+        ).encode()
+        payload = tar_bytes(
+            [
+                ("usr/lib/lua/luci/controller/wstunnel.lua", b"controller\n", 0o644),
+                ("usr/lib/lua/luci/model/cbi/wstunnel.lua", b"model\n", 0o644),
+                ("usr/lib/lua/luci/i18n/wstunnel.zh-cn.lmo", b"translation\n", 0o644),
+                ("usr/share/rpcd/acl.d/luci-app-wstunnel.json", b"{}\n", 0o644),
+                ("etc/uci-defaults/luci-wstunnel", b"#!/bin/sh\n", 0o755),
+                ("usr/share/licenses/luci-app-wstunnel/LICENSE", b"GPL-3.0\n", 0o644),
+            ]
+        )
+        package = pathlib.Path(directory) / "luci-app-wstunnel_11.0.0-2_all.ipk"
+        package.write_bytes(
+            tar_bytes(
+                [
+                    ("debian-binary", b"2.0\n", 0o644),
+                    ("control.tar.gz", tar_bytes([("control", control, 0o644)]), 0o644),
+                    ("data.tar.gz", payload, 0o644),
+                ]
+            )
+        )
+        return package
+
+    def test_luci_requires_matching_runtime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            VALIDATOR.validate(self.luci_fixture(directory), "luci-app-wstunnel")
+
+    def test_unversioned_or_stale_luci_runtime_dependency_rejected(self):
+        for dependency in (
+            "wstunnel",
+            "wstunnel (= 11.0.0-1)",
+            "wstunnel (>= 11.0.0-1)",
+        ):
+            with self.subTest(
+                dependency=dependency
+            ), tempfile.TemporaryDirectory() as directory:
+                with self.assertRaises(AssertionError):
+                    VALIDATOR.validate(
+                        self.luci_fixture(directory, dependency), "luci-app-wstunnel"
+                    )
 
     def test_valid_package(self):
         with tempfile.TemporaryDirectory() as directory:

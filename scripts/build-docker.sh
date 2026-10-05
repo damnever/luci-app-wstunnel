@@ -12,13 +12,32 @@ docker info >/dev/null
 mkdir -p "$output_dir"
 output_dir=$(CDPATH='' cd -- "$output_dir" && pwd)
 docker pull "$image"
+sdk_user=$(docker image inspect --format '{{.Config.User}}' "$image")
+volume=
+container=
+cleanup() {
+	[ -z "$container" ] || docker rm -f "$container" >/dev/null || true
+	[ -z "$volume" ] || docker volume rm "$volume" >/dev/null || true
+}
+trap cleanup 0
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# Bind-mount ownership comes from the host, which may use a different SDK UID.
+# Build into a disposable volume, then copy artifacts as the invoking host user.
+volume=$(docker volume create)
+docker run --rm --platform linux/amd64 --user root \
+	--mount "type=volume,src=$volume,dst=/my/output" \
+	--entrypoint /bin/sh "$image" -c 'chown "$1" /my/output' sh "${sdk_user:-root}"
 set --
 case "$(uname -m)" in
 	arm64|aarch64) set -- --env GNUTLS_CPUID_OVERRIDE=0x1 ;;
 esac
-docker run --rm --platform linux/amd64 \
+container=$(docker create --platform linux/amd64 \
 	--mount "type=bind,src=$source_dir,dst=/my/openwrt,readonly" \
-	--mount "type=bind,src=$output_dir,dst=/my/output" \
+	--mount "type=volume,src=$volume,dst=/my/output" \
 	--env "BUILD_JOBS=$jobs" --env "BUILD_PACKAGE_ARCH=${BUILD_PACKAGE_ARCH:-}" "$@" \
-	"$image" /bin/sh /my/openwrt/scripts/build-sdk.sh
+	"$image" /bin/sh /my/openwrt/scripts/build-sdk.sh)
+docker start --attach "$container"
+docker cp "$container:/my/output/." "$output_dir/"
 echo "Installable packages: $output_dir/wstunnel_*.ipk $output_dir/luci-app-wstunnel_*.ipk"

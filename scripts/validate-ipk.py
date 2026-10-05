@@ -26,7 +26,7 @@ def validate(package, name):
                 line.split(": ", 1) for line in control.splitlines() if ": " in line
             )
             assert fields["Package"] == name
-            assert fields["Version"] == "11.0.0-1"
+            assert fields["Version"] == "11.0.0-2"
             assert (
                 package.name
                 == f'{name}_{fields["Version"]}_{fields["Architecture"]}.ipk'
@@ -35,6 +35,7 @@ def validate(package, name):
             if name == "wstunnel":
                 assert fields["Architecture"] != "all"
                 assert "ca-bundle" in dependencies
+                assert "lua" in dependencies
                 assert (
                     "/etc/config/wstunnel"
                     in control_archive.extractfile(control_members["conffiles"])
@@ -45,13 +46,27 @@ def validate(package, name):
             else:
                 assert fields["Architecture"] == "all"
                 assert "luci-compat" in dependencies and "wstunnel" in dependencies
+                assert re.search(
+                    r"(?:^|,)\s*wstunnel\s*\(=\s*"
+                    + re.escape(fields["Version"])
+                    + r"\)\s*(?:,|$)",
+                    fields["Depends"],
+                ), "LuCI must require the matching wstunnel runtime package"
         with tarfile.open(
             fileobj=io.BytesIO(archive.extractfile(outer["data.tar.gz"]).read()),
             mode="r:gz",
         ) as data_archive:
             data = members(data_archive)
             required = (
-                ("usr/bin/wstunnel", "etc/init.d/wstunnel", "etc/config/wstunnel")
+                (
+                    "usr/bin/wstunnel",
+                    "etc/init.d/wstunnel",
+                    "etc/config/wstunnel",
+                    "usr/lib/lua/wstunnel/tunnel.lua",
+                    "usr/libexec/wstunnel-validate",
+                    "usr/share/licenses/wstunnel/LICENSE",
+                    "usr/share/licenses/wstunnel/COPYING",
+                )
                 if name == "wstunnel"
                 else (
                     "usr/lib/lua/luci/controller/wstunnel.lua",
@@ -59,6 +74,7 @@ def validate(package, name):
                     "usr/lib/lua/luci/i18n/wstunnel.zh-cn.lmo",
                     "usr/share/rpcd/acl.d/luci-app-wstunnel.json",
                     "etc/uci-defaults/luci-wstunnel",
+                    "usr/share/licenses/luci-app-wstunnel/LICENSE",
                 )
             )
             for path in required:
@@ -69,10 +85,10 @@ def validate(package, name):
                     "usr/bin/wstunnel",
                     "etc/init.d/wstunnel",
                     "etc/uci-defaults/luci-wstunnel",
+                    "usr/libexec/wstunnel-validate",
                 ):
                     assert data[path].mode & 0o111, path
             if name == "wstunnel":
-                assert "usr/share/licenses/wstunnel/LICENSE" in data
                 assert data["etc/config/wstunnel"].mode & 0o077 == 0
                 binary = data_archive.extractfile(data["usr/bin/wstunnel"]).read()
                 assert binary[:4] == b"\x7fELF"

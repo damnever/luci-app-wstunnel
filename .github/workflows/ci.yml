@@ -23,6 +23,7 @@ jobs:
           WSTUNNEL_LUA: lua5.1
           WSTUNNEL_OPENWRT_TEST: '1'
           WSTUNNEL_OPENWRT_BINARY: ${{ runner.temp }}/wstunnel/wstunnel
+          WSTUNNEL_PARSER_BINARY: ${{ runner.temp }}/wstunnel/wstunnel
   build:
     needs: test
     runs-on: ubuntu-24.04
@@ -30,6 +31,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/build-docker.sh
+      - name: Verify package upgrade and Lua module loading
+        run: python3 -m unittest discover -s tests -p test_upgrade.py -v
+        env:
+          WSTUNNEL_OPENWRT_TEST: '1'
+          WSTUNNEL_UPGRADE_PACKAGES: ${{ github.workspace }}/bin
       - uses: actions/upload-artifact@v4
         with:
           name: wstunnel-mt7623-openwrt-23.05.5

@@ -1,3 +1,4 @@
+local tunnel_validator = require("wstunnel.tunnel")
 local map = Map("wstunnel", "wstunnel", translate("Enabled clients start at boot. Logs: logread -e wstunnel."))
 local clients = map:section(TypedSection, "client", translate("Clients"))
 clients.addremove = true
@@ -45,18 +46,8 @@ local_forward.description = translate(
 local function validate_tunnel(self, value)
     local values = type(value) == "table" and value or { value }
     for _, tunnel in ipairs(values) do
-        local protocol, address = tunnel:match("^([%w]+)://(.+)$")
-        if
-            not address
-            or not (
-                protocol == "tcp"
-                or protocol == "udp"
-                or protocol == "socks5"
-                or protocol == "http"
-                or protocol == "unix"
-            )
-        then
-            return nil, translate("Enter a supported tunnel URI.")
+        if not tunnel_validator.validate(tunnel) then
+            return nil, translate("Enter a supported tunnel URI with valid addresses and ports (0-65535).")
         end
     end
     return value
@@ -67,6 +58,10 @@ function enabled.validate(self, value, section)
         local tunnels = local_forward:formvalue(section) or {}
         if type(tunnels) == "string" then
             tunnels = { tunnels }
+        end
+        local valid, error_message = validate_tunnel(self, tunnels)
+        if not valid then
+            return nil, error_message
         end
         for _, tunnel in ipairs(tunnels) do
             if tunnel ~= "" then

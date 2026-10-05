@@ -37,8 +37,8 @@ msgstr "本地转发隧道"
 msgid "One -L tunnel per line. TCP/UDP: protocol://listen-address:port:destination-address:port. The destination is the service you would connect to directly, not the wstunnel server, and must be reachable from that server."
 msgstr "每行一个 -L 隧道。TCP/UDP：协议://监听地址:端口:目标地址:端口。目标是原本直连的业务服务，不是 wstunnel server，且须从 server 一侧可达。"
 
-msgid "Enter a supported tunnel URI."
-msgstr "请输入受支持的隧道 URI"
+msgid "Enter a supported tunnel URI with valid addresses and ports (0-65535)."
+msgstr "请输入受支持的隧道 URI，使用有效的地址和端口（0-65535）。"
 
 msgid "Configure at least one local forwarding tunnel before enabling the client."
 msgstr "启用客户端前，请至少配置一个本地转发隧道"

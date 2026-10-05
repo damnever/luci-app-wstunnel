@@ -1,5 +1,7 @@
 import json
+import os
 import pathlib
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -7,6 +9,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SERVICE = ROOT / "files/root/etc/init.d/wstunnel"
+LUA = os.environ.get("WSTUNNEL_LUA", "luajit")
 
 
 class ServiceTest(unittest.TestCase):
@@ -45,6 +48,19 @@ class ServiceTest(unittest.TestCase):
                 + 'logger() { printf "ERROR:%s\\n" "$*"; }\n'
                 + 'procd_add_reload_trigger() { printf "RELOAD:%s\\n" "$1"; }\n'
             )
+            # Relocate the installed validator entry point into this fixture;
+            # execute the real shared parser rather than replacing its result.
+            service = pathlib.Path(directory) / "wstunnel"
+            service.write_text(
+                SERVICE.read_text().replace(
+                    "/usr/libexec/wstunnel-validate",
+                    shlex.quote(LUA)
+                    + " "
+                    + shlex.quote(
+                        str(ROOT / "files/root/usr/libexec/wstunnel-validate")
+                    ),
+                )
+            )
             return subprocess.run(
                 [
                     "/bin/sh",
@@ -52,8 +68,12 @@ class ServiceTest(unittest.TestCase):
                     '. "$1"; . "$2"; start_client main; service_triggers',
                     "test",
                     str(fixture),
-                    str(SERVICE),
+                    str(service),
                 ],
+                env={
+                    **os.environ,
+                    "LUA_PATH": str(ROOT / "files/root/usr/lib/lua/?.lua") + ";;",
+                },
                 text=True,
                 capture_output=True,
                 check=True,
@@ -77,6 +97,22 @@ class ServiceTest(unittest.TestCase):
     def test_invalid_protocol(self):
         output = self.run_service({}, ["stdio://localhost:80"])
         self.assertIn("Missing or unsupported tunnel", output)
+        self.assertNotIn("OPEN:", output)
+
+    def test_forwarding_address_and_port_validation(self):
+        for valid, uri in (
+            (True, "tcp://127.0.0.1:1234:localhost:80"),
+            (False, "tcp://127.0.0.1:65536:localhost:80"),
+            (False, "tcp://[gggg::1]:1234:localhost:80"),
+        ):
+            with self.subTest(uri=uri):
+                output = self.run_service({}, [uri])
+                self.assertEqual("OPEN:" in output, valid, output)
+
+    def test_one_invalid_tunnel_prevents_partial_start(self):
+        output = self.run_service(
+            {}, ["tcp://1234:localhost:80", "tcp://127.0.0.1:65536:localhost:80"]
+        )
         self.assertNotIn("OPEN:", output)
 
     def test_invalid_log_level(self):
@@ -160,7 +196,9 @@ class ServiceTest(unittest.TestCase):
             ).read_text()
         )
         self.assertEqual(acl["luci-app-wstunnel"]["write"]["uci"], ["wstunnel"])
-        self.assertEqual(acl["luci-app-wstunnel"]["read"]["ubus"], {"service": ["list"]})
+        self.assertEqual(
+            acl["luci-app-wstunnel"]["read"]["ubus"], {"service": ["list"]}
+        )
         self.assertNotIn("ubus", acl["luci-app-wstunnel"]["write"])
 
     def test_shell_syntax(self):

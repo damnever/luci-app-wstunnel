@@ -21,7 +21,9 @@ class MakefileTest(unittest.TestCase):
             (sdk / "include/package.mk").write_text("")
             inspect = sdk / "inspect.mk"
             inspect.write_text(
-                "inspect:\n\t@printf '%s\\n' '$(WSTUNNEL_ARCH)'\n"
+                "$(eval $(call Package/luci-app-wstunnel))\n"
+                "inspect:\n\t@printf '%s\\n' '$(WSTUNNEL_ARCH)' "
+                "'$(PKG_VERSION)-$(PKG_RELEASE)' '$(EXTRA_DEPENDS)' '$(DEPENDS)'\n"
             )
             result = subprocess.run(
                 [
@@ -52,3 +54,8 @@ class MakefileTest(unittest.TestCase):
     def test_unsupported_cpu_has_no_binary_mapping(self):
         self.assertEqual(self.inspect("arm", "arm1176jzf-s")[0], "")
         self.assertEqual(self.inspect("mips")[0], "")
+
+    def test_luci_runtime_dependency_resolves_to_same_release(self):
+        _, version, runtime_dependency, build_dependencies = self.inspect("aarch64")
+        self.assertEqual(runtime_dependency, f"wstunnel (= {version})")
+        self.assertIn("+wstunnel", build_dependencies.split())

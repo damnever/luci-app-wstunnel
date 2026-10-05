@@ -385,3 +385,6 @@ luac.out
 
 
 bin/
+
+# Keep the packaged Lua validator despite the generic Python lib/ ignore.
+!files/root/usr/lib/

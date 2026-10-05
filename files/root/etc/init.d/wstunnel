@@ -6,10 +6,7 @@ USE_PROCD=1
 
 validate_tunnel() {
 	local value="$1"
-	case "$value" in
-		tcp://?*|udp://?*|socks5://?*|http://?*|unix://?*) ;;
-		*) invalid=1; return ;;
-	esac
+	/usr/libexec/wstunnel-validate "$value" || { invalid=1; return; }
 	tunnel_count=$((tunnel_count + 1))
 }
 
