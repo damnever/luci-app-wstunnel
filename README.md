@@ -39,9 +39,9 @@ opkg install /tmp/wstunnel_*.ipk /tmp/luci-app-wstunnel_*.ipk
 
 ## Tests
 
-Run `./tests/run.sh` with Python 3 and LuaJIT, or set `WSTUNNEL_LUA=lua5.1`.
-Set `WSTUNNEL_PARSER_BINARY` to a pinned v11.0.0 client to also check the forwarding fixtures against its argument parser.
-For package upgrade tests, set `WSTUNNEL_OPENWRT_TEST=1` and `WSTUNNEL_UPGRADE_PACKAGES` to the directory containing built IPKs.
+```sh
+./tests/run.sh
+```
 
 ## License
 
