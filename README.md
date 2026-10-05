@@ -27,16 +27,6 @@ opkg update
 opkg install /tmp/wstunnel_*.ipk /tmp/luci-app-wstunnel_*.ipk
 ```
 
-When upgrading, copy and install both packages from the same build. The LuCI
-package requires the matching `wstunnel` package, which contains the shared Lua
-validator. Package release `11.0.0-2` upgrades older `11.0.0-1` installations.
-
-To check the installed validator:
-
-```sh
-lua -e 'require("wstunnel.tunnel")'
-```
-
 ## Note
 
 - Packages wstunnel **11.0.0** upstream static binaries using the OpenWrt **23.05.5 SDK**, in **IPK** format.
