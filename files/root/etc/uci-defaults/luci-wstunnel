@@ -1,0 +1,8 @@
+#!/bin/sh
+uci -q batch <<-EOF
+	delete ucitrack.@wstunnel[-1]
+	add ucitrack wstunnel
+	set ucitrack.@wstunnel[-1].init=wstunnel
+	commit ucitrack
+EOF
+exit 0

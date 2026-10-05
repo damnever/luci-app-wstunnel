@@ -1,0 +1,7 @@
+{
+    "luci-app-wstunnel": {
+        "description": "Configure wstunnel clients",
+        "read": { "uci": ["wstunnel"], "ubus": { "service": ["list"] } },
+        "write": { "uci": ["wstunnel"] }
+    }
+}

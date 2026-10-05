@@ -1,0 +1,84 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Enabled clients start at boot. Logs: logread -e wstunnel."
+msgstr "启用的客户端随系统启动。日志：logread -e wstunnel。"
+
+msgid "Clients"
+msgstr "客户端"
+
+msgid "Process status"
+msgstr "运行状态"
+
+msgid "Refresh the page to update. A running process does not mean the tunnel is connected."
+msgstr "刷新页面更新。进程运行不代表隧道已连接。"
+
+msgid "Unknown (process status unavailable)"
+msgstr "未知（无法查询进程状态）"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "未运行"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Server URL"
+msgstr "服务端地址"
+
+msgid "Enter a ws://, wss://, http:// or https:// server URL."
+msgstr "请输入 ws://、wss://、http:// 或 https:// 服务端地址"
+
+msgid "Local forwarding tunnels"
+msgstr "本地转发隧道"
+
+msgid "One -L tunnel per line. TCP/UDP: protocol://listen-address:port:destination-address:port. The destination is the service you would connect to directly, not the wstunnel server, and must be reachable from that server."
+msgstr "每行一个 -L 隧道。TCP/UDP：协议://监听地址:端口:目标地址:端口。目标是原本直连的业务服务，不是 wstunnel server，且须从 server 一侧可达。"
+
+msgid "Enter a supported tunnel URI."
+msgstr "请输入受支持的隧道 URI"
+
+msgid "Configure at least one local forwarding tunnel before enabling the client."
+msgstr "启用客户端前，请至少配置一个本地转发隧道"
+
+msgid "Verify TLS certificate"
+msgstr "校验 TLS 证书"
+
+msgid "Enabled by default. Disable only for a trusted server using a self-signed certificate."
+msgstr "默认开启。仅在明确使用可信的自签名服务端时关闭。"
+
+msgid "TLS SNI override"
+msgstr "TLS SNI 覆盖"
+
+msgid "HTTP upgrade path prefix"
+msgstr "HTTP 升级路径前缀"
+
+msgid "wstunnel automatically appends /events to the prefix. For example, v1 produces the request path /v1/events. If your reverse proxy routes by path, ensure its rule matches and forwards this request to wstunnel; either exact-path or prefix matching works. Enter only the prefix here."
+msgstr "wstunnel 会自动在前缀后追加 /events。例如填 v1，请求路径就是 /v1/events。如果反向代理按路径路由，请确保规则能匹配并将这个请求转发到 wstunnel；完整路径匹配或前缀匹配都可以。此处只填前缀。"
+
+msgid "Upstream HTTP proxy"
+msgstr "上游 HTTP 代理"
+
+msgid "HTTP Basic authentication"
+msgstr "HTTP Basic 认证"
+
+msgid "Format: USER:PASS. Credentials are stored on the router and readable by administrators; they also appear in process arguments."
+msgstr "格式为 USER:PASS。配置保存在路由器上，管理员可读取；进程参数也包含认证信息。"
+
+msgid "Log level"
+msgstr "日志级别"
+
+msgid "Worker threads"
+msgstr "工作线程数"
+
+msgid "Sets --nb-worker-threads. Leave blank to use the wstunnel default (CPU count)."
+msgstr "对应 --nb-worker-threads。留空使用 wstunnel 默认值（CPU 数量）。"
+
+msgid "Enter a positive integer, or leave blank to use the default."
+msgstr "请输入大于 0 的整数，或留空使用默认值"
+
+
+msgid "Running (PID %s)"
+msgstr "运行中（PID %s）"

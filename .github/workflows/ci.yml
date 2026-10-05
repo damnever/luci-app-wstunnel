@@ -1,0 +1,37 @@
+name: Test and build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y lua5.1 python3
+      - name: Fetch pinned client for procd lifecycle tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/wstunnel"
+          curl -fL https://github.com/erebe/wstunnel/releases/download/v11.0.0/wstunnel_11.0.0_linux_amd64.tar.gz -o "$RUNNER_TEMP/wstunnel/client.tar.gz"
+          echo "9708a99717b5a951453c2ff7c14c25d3418d02ca7fcb96fdb382a8f2083bab5e  $RUNNER_TEMP/wstunnel/client.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/wstunnel/client.tar.gz" -C "$RUNNER_TEMP/wstunnel"
+          chmod +x "$RUNNER_TEMP/wstunnel/wstunnel"
+      - run: ./tests/run.sh
+        env:
+          WSTUNNEL_LUA: lua5.1
+          WSTUNNEL_OPENWRT_TEST: '1'
+          WSTUNNEL_OPENWRT_BINARY: ${{ runner.temp }}/wstunnel/wstunnel
+  build:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/build-docker.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wstunnel-mt7623-openwrt-23.05.5
+          path: bin/*.ipk
+          if-no-files-found: error

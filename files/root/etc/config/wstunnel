@@ -1,0 +1,6 @@
+config client 'main'
+	option enabled '0'
+	option server 'wss://example.com:443'
+	option tls_verify '1'
+	option log_level 'INFO'
+	list local_forward 'tcp://127.0.0.1:51820:127.0.0.1:51820'
